@@ -1,0 +1,29 @@
+# This NetworkPolicy allows ingress traffic from pods with the label "role: client"
+# to pods with the label "role: web" in the same namespace. This means that only the client pod can access the web pod, while the blocked pod is denied access.
+# This is useful for restricting access to specific pods in a namespace.
+# This policy is useful for allowing traffic from a specific pod to a specific pod.
+# Compare this snippet from Network-Policy-Learning-Environment/allow-egress-to-ns.yaml:
+# # Allow Egress to any pod in namespace with label access=true
+# # This policy allows egress traffic from any pod in the np-demo namespace to any pod in any namespace with the label access=true.
+# # This is useful for allowing traffic to a specific namespace.
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: combined-ingress-egress
+  namespace: np-demo
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          role: client
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          access: true

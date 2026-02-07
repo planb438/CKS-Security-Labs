@@ -1,0 +1,22 @@
+#Then allow frontend pods to connect to web:
+#Only pods in frontend namespace (with the correct label) can connect.
+# # This policy allows ingress traffic to web pods from any pod in the frontend namespace.
+# # This is useful for allowing traffic from a specific namespace to a specific pod.
+
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-from-frontend-ns
+  namespace: np-demo
+spec:
+  podSelector:
+    matchLabels:
+      role: web
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          access: "true"
+  policyTypes:
+  - Ingress

@@ -1,0 +1,35 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: block-host-access
+spec:
+  validationFailureAction: enforce
+  background: false
+  rules:
+    - name: deny-hostnetwork-hostpid
+      match:
+        any:
+          - resources:
+              kinds: ["Pod"]
+      validate:
+        message: "hostNetwork or hostPID usage is not allowed"
+        deny:
+          conditions:
+            any:
+              - key: "{{ request.object.spec.hostNetwork }}"
+                operator: Equals
+                value: true
+              - key: "{{ request.object.spec.hostPID }}"
+                operator: Equals
+                value: true
+    - name: deny-hostpath-volume
+      match:
+        any:
+          - resources:
+              kinds: ["Pod"]
+      validate:
+        message: "hostPath volumes are not allowed"
+        pattern:
+          spec:
+            volumes:
+              - hostPath: "?*"

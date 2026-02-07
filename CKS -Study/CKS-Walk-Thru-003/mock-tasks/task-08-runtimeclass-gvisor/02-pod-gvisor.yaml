@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sandboxed
+  namespace: default
+spec:
+  runtimeClassName: gvisor
+  containers:
+    - name: app
+      image: busybox
+      command: ["sleep", "3600"]

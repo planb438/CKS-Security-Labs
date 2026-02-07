@@ -1,0 +1,26 @@
+
+# Allow only port 80 traffic
+# Only port 80 is allowed from client. Any other port = denied.
+# # # This policy allows ingress traffic to web pods from any pod with the label role: client in the same namespace on port 80.
+# # # This is useful for allowing traffic from a specific pod to a specific pod on a specific port.
+
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-port-80
+  namespace: np-demo
+spec:
+  podSelector:
+    matchLabels:
+      role: web
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          role: client
+    ports:
+    - protocol: TCP
+      port: 80
+  policyTypes:
+  - Ingress

@@ -1,0 +1,13 @@
+#No pod in np-demo can receive traffic unless explicitly allowed.
+# This policy denies all ingress traffic to all pods in the np-demo namespace.
+# This is a good starting point for any network policy.
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-all-ingress
+  namespace: np-demo
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress

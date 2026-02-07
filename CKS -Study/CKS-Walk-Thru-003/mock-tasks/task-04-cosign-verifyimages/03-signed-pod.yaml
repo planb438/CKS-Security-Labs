@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: signed
+  namespace: verify-task
+spec:
+  containers:
+  - name: app
+    image: docker.io/YOUR_DOCKERHUB/signed-image:1.0

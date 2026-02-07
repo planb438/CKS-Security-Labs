@@ -1,0 +1,16 @@
+#include <tunables/global>
+
+#include <tunables/global>
+
+profile deny-tmp /bin/** flags=(attach_disconnected) {
+  # Include common base
+  #include <abstractions/base>
+
+  # Deny all write access to /tmp
+  deny /tmp/** wklx,
+
+  # Allow everything else
+  file,
+  network,
+  capability,
+}

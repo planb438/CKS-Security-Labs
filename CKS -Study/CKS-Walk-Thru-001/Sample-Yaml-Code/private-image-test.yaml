@@ -1,0 +1,12 @@
+# private-image-test.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: private-test
+  namespace: dev-002
+spec:
+  containers:
+  - name: private-container
+    image: chris438/node-k8s-app:latest
+  imagePullSecrets:
+  - name: regcred

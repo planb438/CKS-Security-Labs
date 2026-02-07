@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: private-puller
+  namespace: private-test
+spec:
+  containers:
+  - name: app
+    image: YOUR_DOCKERHUB_USERNAME/cks-demo:1.0
+  imagePullSecrets:
+  - name: regcred

@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: secure-pod
+  namespace: default
+spec:
+  containers:
+    - name: hardened
+      image: busybox
+      command: ["sleep", "3600"]
+      securityContext:
+        runAsNonRoot: true
+        privileged: false
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL", "NET_RAW"]
+  securityContext:
+    runAsUser: 1000

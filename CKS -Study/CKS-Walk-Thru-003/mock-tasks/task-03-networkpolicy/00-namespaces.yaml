@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: netpol-task
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: access-allowed

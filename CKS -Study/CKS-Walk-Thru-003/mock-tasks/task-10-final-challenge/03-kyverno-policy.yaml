@@ -1,0 +1,24 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: block-host-privileged
+spec:
+  validationFailureAction: enforce
+  background: false
+  rules:
+    - name: deny-hostnetwork-privileged
+      match:
+        any:
+          - resources:
+              kinds: ["Pod"]
+      validate:
+        message: "hostNetwork and privileged containers are disallowed"
+        deny:
+          conditions:
+            any:
+              - key: "{{ request.object.spec.hostNetwork }}"
+                operator: Equals
+                value: true
+              - key: "{{ request.object.spec.containers[].securityContext.privileged }}"
+                operator: Equals
+                value: true

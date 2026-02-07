@@ -1,0 +1,18 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: verify-sigstore-cosign
+spec:
+  validationFailureAction: enforce
+  background: false
+  rules:
+    - name: verify-signed
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      verifyImages:
+        - image: "ghcr.io/sigstore/cosign*"
+          key: "https://Fulcio.sigstore.dev/ghcr.pub"
+          mutateDigest: true

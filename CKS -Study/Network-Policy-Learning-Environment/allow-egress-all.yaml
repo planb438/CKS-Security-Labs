@@ -1,0 +1,18 @@
+# Allow all Egress from client (Egress Policy)
+#  client pod can access the internet or other namespaces. (Useful for debugging curl/wget.)
+# # # This policy allows egress traffic from client pods to any destination.
+# # # This is useful for allowing traffic from a specific pod to any destination.
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-egress-all
+  namespace: np-demo
+spec:
+  podSelector:
+    matchLabels:
+      role: client
+  egress:
+  - {}
+  policyTypes:
+  - Egress

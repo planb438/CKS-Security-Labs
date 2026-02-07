@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hardened
+  namespace: sa-test
+spec:
+  serviceAccountName: no-token
+  automountServiceAccountToken: false
+  containers:
+  - name: shell
+    image: bitnami/kubectl
+    command: ["sleep", "3600"]

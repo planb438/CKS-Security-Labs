@@ -1,0 +1,24 @@
+# Allow Ingress to web ONLY from client (same namespace)
+# Only client can access web. blocked gets denied.
+# # This policy allows ingress traffic to web pods from any pod with the label role: client in the same namespace.
+# # This is useful for allowing traffic from a specific pod to a specific pod.
+#
+
+
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-client-to-web
+  namespace: np-demo
+spec:
+  podSelector:
+    matchLabels:
+      role: web
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          role: client
+  policyTypes:
+  - Ingress

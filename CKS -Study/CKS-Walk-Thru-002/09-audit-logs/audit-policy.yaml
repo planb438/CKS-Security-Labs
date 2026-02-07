@@ -1,0 +1,11 @@
+# This will log metadata (user, namespace, verb, resource) for all secrets access.
+
+
+apiVersion: audit.k8s.io/v1
+kind: Policy
+rules:
+  - level: Metadata
+    resources:
+      - group: ""  # core API group
+        resources: ["secrets"]
+    namespaces: ["audit-test"]

@@ -1,0 +1,417 @@
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Ubuntu%2022.04%2B-lightgrey)](#)
+[![Kubernetes](https://img.shields.io/badge/Kubernetes-MicroK8s%20%7C%20kubeadm-blue)](#)
+[![YouTube](https://img.shields.io/badge/YouTube-TechShorts-red)](https://www.youtube.com/@adaribain)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Adari%20Bain-blue)](https://www.linkedin.com/in/adari-bain-298924152/)
+ 
+ Given your complex environment, you definitely need a robust backup solution. Let me recommend and set up Velero - the industry standard for Kubernetes backups.
+
+Step 1: Install Velero
+bash
+# First, install Velero CLI
+wget https://github.com/vmware-tanzu/velero/releases/download/v1.11.1/velero-v1.11.1-linux-amd64.tar.gz
+tar -xvf velero-v1.11.1-linux-amd64.tar.gz
+sudo mv velero-v1.11.1-linux-amd64/velero /usr/local/bin/
+rm -rf velero-v1.11.1-linux-amd64*
+
+# Verify installation
+velero version --client-only
+Step 2: Set Up MinIO as Backup Storage (Local S3-compatible)
+bash
+# Create namespace for MinIO
+microk8s kubectl create namespace velero
+
+ Enable MicroK8s Storage Addon
+If no StorageClasses exist, enable the MicroK8s storage addon:
+
+bash
+microk8s enable hostpath-storage
+This will create a default StorageClass using hostPath volumes.
+
+# Install MinIO (S3-compatible storage)
+cat <<EOF | microk8s kubectl apply -f -
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: minio-pvc
+  namespace: velero
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minio
+  namespace: velero
+  labels:
+    app: minio
+spec:
+  selector:
+    matchLabels:
+      app: minio
+  template:
+    metadata:
+      labels:
+        app: minio
+    spec:
+      containers:
+      - name: minio
+        image: minio/minio
+        args:
+        - server
+        - /data
+        - --console-address
+        - :9001
+        env:
+        - name: MINIO_ROOT_USER
+          value: minioadmin
+        - name: MINIO_ROOT_PASSWORD
+          value: minioadmin123
+        ports:
+        - containerPort: 9000
+        - containerPort: 9001
+        volumeMounts:
+        - name: storage
+          mountPath: /data
+      volumes:
+      - name: storage
+        persistentVolumeClaim:
+          claimName: minio-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio
+  namespace: velero
+spec:
+  ports:
+  - port: 9000
+    targetPort: 9000
+    name: api
+  - port: 9001
+    targetPort: 9001
+    name: console
+  selector:
+    app: minio
+EOF
+Step 3: Create MinIO Credentials
+bash
+# Create credentials file for Velero
+cat > minio-credentials <<EOF
+[default]
+aws_access_key_id=minioadmin
+aws_secret_access_key=minioadmin123
+EOF
+
+# Export MicroK8s kubeconfig to a file
+microk8s config > ~/.kube/config
+
+
+Step 4: Install Velero in Cluster
+bash
+# Install Velero with MinIO backend
+velero install \
+    --provider aws \
+    --plugins velero/velero-plugin-for-aws:v1.7.0 \
+    --bucket velero-backups \
+    --backup-location-config region=minio,s3ForcePathStyle="true",s3Url=http://minio.velero.svc:9000 \
+    --secret-file ./minio-credentials \
+    --use-volume-snapshots=false \
+    --namespace velero
+
+# Verify installation
+velero get backups
+microk8s kubectl get pods -n velero
+Step 5: Create Backup Plans
+A. Full Cluster Backup
+bash
+# Create a full cluster backup
+velero backup create full-cluster-backup --include-namespaces='' --wait
+
+# Schedule daily full backups
+velero create schedule daily-full-backup --schedule="0 2 * * *" --include-namespaces=''
+B. Selective Namespace Backups
+bash
+# Backup critical namespaces
+velero create schedule critical-daily --schedule="0 3 * * *" \
+  --include-namespaces argocd,monitoring,wordpress
+
+# Backup specific namespace now
+velero backup create argocd-backup --include-namespaces argocd
+Step 6: Create Restore Testing Plan
+bash
+# Test restore to a test namespace
+velero restore create test-restore --from-backup full-cluster-backup --namespace-mappings argocd:argocd-test
+
+# Verify restore worked
+microk8s kubectl get pods -n argocd-test
+Step 7: Monitor Backups
+bash
+# Check backup status
+velero get backups
+
+# Check backup details
+velero describe backup full-cluster-backup
+
+# Check restore status
+velero get restores
+Step 8: Create Backup Policies
+yaml
+# Create backup policy resource
+cat <<EOF | microk8s kubectl apply -f -
+apiVersion: velero.io/v1
+kind: BackupStorageLocation
+metadata:
+  name: default
+  namespace: velero
+spec:
+  provider: aws
+  objectStorage:
+    bucket: velero-backups
+  config:
+    region: minio
+    s3ForcePathStyle: "true"
+    s3Url: http://minio.velero.svc:9000
+---
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: daily-critical
+  namespace: velero
+spec:
+  schedule: 0 3 * * *
+  template:
+    includedNamespaces:
+    - argocd
+    - monitoring
+    - wordpress
+    - velero
+    ttl: 720h0m0s
+EOF
+Step 9: Set Up Alerts and Monitoring
+bash
+# Check backup status regularly
+# Add this to your monitoring system (cronjob or script)
+cat > /usr/local/bin/check-backups <<'EOF'
+#!/bin/bash
+if velero get backups | grep -q "Failed"; then
+    echo "CRITICAL: Backup failures detected!"
+    exit 1
+elif velero get backups | grep -q "InProgress"; then
+    echo "WARNING: Backups in progress"
+    exit 0
+else
+    echo "OK: All backups completed successfully"
+    exit 0
+fi
+EOF
+
+chmod +x /usr/local/bin/check-backups
+Step 10: Disaster Recovery Plan
+A. Restore Entire Cluster
+bash
+# Restore everything from latest backup
+velero restore create full-restore --from-backup full-cluster-backup --wait
+B. Restore Specific Namespace
+bash
+# Restore single namespace
+velero restore create argocd-restore --from-backup critical-daily --include-namespaces argocd
+Step 11: Regular Maintenance
+bash
+# Clean up old backups (keep 30 days)
+velero create schedule backup-cleanup --schedule="0 4 * * *" --ttl 720h
+
+# Check backup storage usage
+# List all backups
+velero get backups
+
+# Delete specific old backup
+velero delete backup old-backup-name
+Step 12: Verify Everything Works
+bash
+# Test the entire backup/restore cycle
+velero backup create test-backup --include-namespaces default --wait
+
+# Check backup status
+velero describe backup test-backup
+
+# Test restore
+velero restore create test-restore --from-backup test-backup --wait
+
+# Cleanup test
+velero delete backup test-backup
+velero delete restore test-restore
+Important Notes:
+Storage Size: Make sure your MinIO PVC has enough space (50GB+)
+
+Encryption: For production, enable encryption in MinIO
+
+Offsite Backup: Consider periodic exports of MinIO data to external storage
+
+Documentation: Keep restore procedures documented
+
+Testing: Regularly test restore procedures
+
+Backup Schedule Recommendation:
+Full cluster: Weekly ( Sundays at 2 AM )
+
+Critical namespaces: Daily ( 3 AM )
+
+Retention: 30 days for critical, 7 days for full
+
+This setup gives you enterprise-grade backup capabilities for your MicroK8s environment!
+
+
+---
+
+Now I can see the issue. You're using MinIO (local) but configured Velero with the AWS provider. The problem is that Velero is trying to use AWS SDK to talk to your MinIO instance, but there's a bucket issue.
+
+The Main Issues:
+Bucket doesn't exist: MinIO bucket velero-backups needs to be created manually
+
+AWS provider for MinIO: You're using AWS provider but should use aws with MinIO-specific configuration
+
+Solution: Create the Bucket and Fix Configuration
+1. First, create the bucket in MinIO:
+bash
+# Port-forward to access MinIO web UI
+kubectl port-forward -n velero svc/minio 9000:9000 9001:9001 &
+Then open your browser to http://localhost:9001 (login with minioadmin/minioadmin) and create a bucket called velero-backups.
+
+OR use the MinIO client:
+
+bash
+# Create a temporary pod with mc (MinIO client)
+kubectl run -n velero mc-client --rm -it --image=minio/mc --restart=Never -- /bin/sh
+
+# Inside the container, configure mc and create the bucket
+mc alias set minio http://minio:9000 minioadmin minioadmin
+mc mb minio/velero-backups
+mc ls minio/
+exit
+2. Alternative: Use curl to create the bucket
+bash
+# Port-forward MinIO
+kubectl port-forward -n velero svc/minio 9000:9000 &
+
+# Create bucket using curl
+curl -X PUT http://localhost:9000/velero-backups
+3. Verify the bucket was created:
+bash
+# Check if bucket exists
+curl http://localhost:9000/velero-backups
+4. Update Velero configuration (if needed):
+Your configuration looks mostly correct, but let's verify the credentials:
+
+bash
+# Check if credentials secret exists
+kubectl get secret -n velero cloud-credentials -o yaml
+5. After creating the bucket, validate the backup storage location:
+bash
+velero backup-location get
+6. If you still have issues, consider recreating the BackupStorageLocation:
+bash
+# Delete and recreate the BSL
+kubectl delete backupstoragelocation -n velero default
+
+# Create a new one with proper configuration
+cat <<EOF | kubectl apply -f -
+apiVersion: velero.io/v1
+kind: BackupStorageLocation
+metadata:
+  name: default
+  namespace: velero
+spec:
+  provider: aws
+  default: true
+  objectStorage:
+    bucket: velero-backups
+  config:
+    region: minio
+    s3ForcePathStyle: "true"
+    s3Url: http://minio.velero.svc:9000
+    insecureSkipTLSVerify: "true"
+EOF
+7. Check if Velero detects the bucket now:
+bash
+velero backup-location get
+kubectl get backupstoragelocation -n velero default -o yaml
+The key issue is that MinIO doesn't automatically create buckets like cloud providers do. 
+You need to create the velero-backups bucket manually first. Once the bucket exists,
+Velero should be able to validate the storage location successfully.
+
+---
+
+Patching the MinIO service to use NodePort is a great idea for home lab access. Here's how to do it:
+
+Method 1: Patch the existing service to NodePort
+bash
+# Change MinIO service from ClusterIP to NodePort
+kubectl patch svc -n velero minio -p '{"spec": {"type": "NodePort"}}'
+Method 2: Alternatively, expose it with specific ports
+bash
+# Expose MinIO as NodePort with specific ports
+kubectl patch svc -n velero minio -p '{"spec": {"type": "NodePort", "ports": [{"name": "api","port": 9000,"targetPort": 9000,"nodePort": 30900},{"name": "console","port": 9001,"targetPort": 9001,"nodePort": 30901}]}}'
+Method 3: Apply a complete service definition (more control)
+bash
+# Apply a NodePort service definition
+cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio
+  namespace: velero
+spec:
+  type: NodePort
+  ports:
+    - name: api
+      port: 9000
+      targetPort: 9000
+      nodePort: 30900
+    - name: console
+      port: 9001
+      targetPort: 9001
+      nodePort: 30901
+  selector:
+    app: minio
+EOF
+Check the new service configuration:
+bash
+kubectl get svc -n velero minio
+You should see output like:
+
+text
+NAME    TYPE       CLUSTER-IP      EXTERNAL-IP   PORT(S)                         AGE
+minio   NodePort   10.152.183.138  <none>        9000:30900/TCP,9001:30901/TCP   XXm
+Access MinIO now:
+MinIO API: http://<your-node-ip>:30900
+
+MinIO Console (Web UI): http://<your-node-ip>:30901
+
+Login credentials: minioadmin / minioadmin
+
+Create the bucket through the web UI:
+Open http://<your-node-ip>:30901 in your browser
+
+Login with minioadmin/minioadmin
+
+Click "Create Bucket"
+
+Name it velero-backups
+
+Click "Create Bucket"
+
+Verify Velero can access it:
+bash
+# Check if Velero now detects the bucket
+velero backup-location get
+
+# It should show "Available" instead of "Unavailable"
+Optional: Make the change permanent
+If you want this to survive pod restarts, you might want to update your MinIO deployment configuration or Helm values if you installed via Helm.
+
+This NodePort approach is perfect for home labs as it gives you easy external access without needing to constantly port-forward!

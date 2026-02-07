@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: apparmor-pod
+  namespace: secdemo
+  annotations:
+    container.apparmor.security.beta.kubernetes.io/nginx: localhost/deny-write-tmp
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    command: ["sleep", "3600"]
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: ["ALL"]

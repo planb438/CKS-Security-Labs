@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: drop-cap-pod
+  namespace: security-context
+spec:
+  containers:
+  - name: app
+    image: busybox
+    command: ["sleep", "3600"]
+    securityContext:
+      capabilities:
+        drop:
+          - ALL

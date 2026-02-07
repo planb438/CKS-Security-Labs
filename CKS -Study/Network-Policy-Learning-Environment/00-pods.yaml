@@ -1,0 +1,40 @@
+#Create 3 pods to simulate real app components:
+# 00-pods.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: web
+  namespace: np-demo
+  labels:
+    role: web
+spec:
+  containers:
+  - name: app
+    image: busybox
+    command: ["sleep", "3600"]
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: client
+  namespace: np-demo
+  labels:
+    role: client
+spec:
+  containers:
+  - name: app
+    image: busybox
+    command: ["sleep", "3600"]
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: blocked
+  namespace: np-demo
+  labels:
+    role: blocked
+spec:
+  containers:
+  - name: app
+    image: busybox
+    command: ["sleep", "3600"]

@@ -1,0 +1,8 @@
+# ns-restricted.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: psa-test
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest

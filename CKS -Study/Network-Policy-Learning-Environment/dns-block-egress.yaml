@@ -1,0 +1,15 @@
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: dns-block-egress
+  namespace: np-demo
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - ports:
+      - protocol: UDP
+        port: 53

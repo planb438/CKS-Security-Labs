@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: signed
+spec:
+  containers:
+  - name: cosign
+    image: ghcr.io/sigstore/cosign

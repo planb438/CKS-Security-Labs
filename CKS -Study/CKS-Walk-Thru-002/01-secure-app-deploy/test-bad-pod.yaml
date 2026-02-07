@@ -1,0 +1,15 @@
+### test-bad-pod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bad-pod
+  namespace: dev
+spec:
+  containers:
+    - name: hacker
+      image: busybox
+      command: ["sleep", "3600"]
+      securityContext:
+        privileged: true
+
+

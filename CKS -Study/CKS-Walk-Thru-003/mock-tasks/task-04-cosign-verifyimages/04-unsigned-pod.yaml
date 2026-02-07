@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: unsigned
+  namespace: verify-task
+spec:
+  containers:
+  - name: app
+    image: nginx:latest

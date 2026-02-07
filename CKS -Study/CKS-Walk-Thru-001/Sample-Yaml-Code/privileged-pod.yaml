@@ -1,0 +1,12 @@
+# privileged-pod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: naughty
+spec:
+  containers:
+    - name: cks
+      image: busybox
+      command: ["sh", "-c", "sleep 3600"]
+      securityContext:
+        privileged: true
