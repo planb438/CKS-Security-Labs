@@ -16,7 +16,7 @@ modprobe overlay
 modprobe br_netfilter
 
 
-cat << EOF | tee /etc/sysctl.d/kubernetes.conf
+cat << EOF | sudo tee /etc/sysctl.d/kubernetes.conf
 net.bridge.bridge-nf-call-ip6tables = 1
 net.bridge.bridge-nf-call-iptables = 1
 net.ipv4.ip_forward = 1
@@ -78,17 +78,17 @@ apt-mark hold kubelet kubeadm kubectl
 cp /home/student/LFS258/SOLUTIONS/s_03/kubeadm-config.yaml /root/
 
 
-kubeadm init --config=kubeadm-config.yaml --upload-certs --node-name=cp \
-| tee kubeadm-init.out                 #<-- Save output for future review
+kubeadm init --pod-network-cidr=10.0.0.0/16 --node-name=cp | tee kubeadm-init.out                 #<-- Save output for future review
 
 
 
 exit
 
 
-mkdir -p $HOME/.kubesudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+mkdir -p $HOME/.kube 
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
-less .kube/confi 
+less .kube/config
 
 ---
 
