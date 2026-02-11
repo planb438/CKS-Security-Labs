@@ -1,3 +1,5 @@
+
+
 ---
 wget https://cm.lf.training/LFS258/LFS258_V2025-03-06_SOLUTIONS.tar.xz --user=LFtraining --password=Penguin2014
 
