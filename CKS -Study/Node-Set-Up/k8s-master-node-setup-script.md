@@ -22,7 +22,14 @@ net.bridge.bridge-nf-call-ip6tables = 1
 net.bridge.bridge-nf-call-iptables = 1
 net.ipv4.ip_forward = 1
 EOF
+sudo modprobe overlay
+sudo modprobe br_netfilter
+cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
+overlay
+br_netfilter
+EOF
 sudo sysctl --system
+sudo systemctl restart kubelet
 echo "Master ready for kubeadm init"
 
 
@@ -35,7 +42,9 @@ echo "Master ready for kubeadm init"
 
 
 
-kubeadm init --pod-network-cidr=10.0.0.0/16 --node-name=cp | tee kubeadm-init.out                 #<-- Save output for future review
+sudo kubeadm init \
+  --apiserver-advertise-address=10.0.1.210 \
+  --pod-network-cidr=10.244.0.0/16 | tee kubeadm-init.out                 #<-- Save output for future review
 
 
 
@@ -49,34 +58,24 @@ less .kube/config
 
 ---
 
-Step-by-Step Installation with Cilium CLI
-The following steps use the Cilium CLI for a streamlined installation:
-Install the Cilium CLI
-Download and extract the latest Cilium CLI to your local machine (e.g., /usr/local/bin):
-bash
-curl -LO https://github.com/cilium/cilium-cli/releases/latest/download/cilium-linux-amd64.tar.gz
-sudo tar xzvfC cilium-linux-amd64.tar.gz /usr/local/bin
-rm cilium-linux-amd64.tar.gz
-(Adjust for your operating system and architecture if necessary).
-Set KUBECONFIG Environment Variable
-If you're running the command from a machine other than the control plane node, ensure your KUBECONFIG environment variable is set correctly to point to your cluster's configuration file (e.g., export KUBECONFIG=$HOME/.kube/config).
-Deploy Cilium
-Run the cilium install command. The CLI will automatically detect the cluster configuration and install the necessary components.
-bash
-cilium install
-Note on Pod CIDR: If your cluster uses a specific Pod CIDR range (e.g., 10.10.0.0/16) that the CLI might not auto-detect, you may need to specify it to avoid IP conflicts:
-bash
-cilium install --set ipam.operator.clusterPoolIPv4PodCIDRList=10.10.0.0/16
-.
-Validate the Installation
-Check the status of the Cilium deployment using the cilium status command:
-bash
-cilium status
-This command provides an overview and confirms all components are running correctly. You can also check the pods in the kube-system namespace:
-bash
-kubectl get pods --namespace=kube-system -l k8s-app=cilium
-.
-Run Connectivity Tests (Optional but Recommended)
-Deploy the built-in connectivity test to verify that pod-to-pod communication is working as expected:
-bash
-cilium connectivity test
+Install Flannel CNI
+
+Run on master:
+
+kubectl apply -f https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml
+
+
+Wait 30–60 seconds:
+
+kubectl get pods -n kube-system
+
+
+Wait until:
+
+kube-flannel pods = Running
+
+🔑 STEP 4 — Generate Join Command
+
+On master:
+
+kubeadm token create --print-join-command
