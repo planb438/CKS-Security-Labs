@@ -35,9 +35,6 @@ echo "Master ready for kubeadm init"
 
 
 
-cp /home/student/LFS258/SOLUTIONS/s_03/kubeadm-config.yaml /root/
-
-
 kubeadm init --pod-network-cidr=10.0.0.0/16 --node-name=cp | tee kubeadm-init.out                 #<-- Save output for future review
 
 
